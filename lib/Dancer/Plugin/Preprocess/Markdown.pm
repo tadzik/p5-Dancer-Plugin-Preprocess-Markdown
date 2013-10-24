@@ -239,7 +239,7 @@ in use).
 
 Default: C<md/dest/I<{path}>>
 
-=head1 
+=head1 ROUTE HANDLERS VS. PATHS
 
 If there's a route defined in your application that matches one of the paths
 served by the plugin, it will take precedence. For example, with the following

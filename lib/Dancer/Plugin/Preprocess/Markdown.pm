@@ -25,11 +25,11 @@ if (exists $settings->{paths}) {
     $paths = $settings->{paths};
 }
 
-my $paths_re = join '|', map { s{^/|/$}{}; quotemeta } keys %$paths;
-
-if ($paths_re ne '') {
-    $paths_re = quotemeta('/') . $paths_re;
-}
+my $paths_re = join '|', map {
+    s{^[^/]}{/$0};      # Add leading slash, if missing
+    s{/$}{};            # Remove trailing slash
+    quotemeta;
+} reverse sort keys %$paths;
 
 sub _process_markdown_file {
     my $md_file = shift;
@@ -58,10 +58,12 @@ hook on_reset_state => sub {
         $path .= '/';
         my $path_settings;
 
-        for my $path_prefix (keys %$paths) {
+        for my $path_prefix (reverse sort keys %$paths) {
             (my $path_prefix_slash = $path_prefix) =~ s{([^/])$}{$1/};
 
-            if (substr($path_prefix_slash, 0, length($path)) eq $path) {
+            if (substr($path, 0, length($path_prefix_slash)) eq
+                $path_prefix_slash)
+            {
                 # Found a matching path
                 $path_settings = {
                     # Top-level settings
@@ -70,6 +72,7 @@ hook on_reset_state => sub {
                     # Path-specific settings (may override top-level ones)
                     %{$paths->{$path_prefix} || {}}
                 };
+                last;
             }
         }
 

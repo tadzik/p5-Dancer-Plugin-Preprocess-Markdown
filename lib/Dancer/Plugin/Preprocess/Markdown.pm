@@ -14,9 +14,10 @@ use File::Spec::Functions qw(catfile file_name_is_absolute);
 use Text::Markdown qw(markdown);
 
 my $settings = {
-    save => 0,
+    layout => setting('layout'),
     # TODO: It might make more sense to have 1 as the default
     recursive => 0,
+    save => 0,
     %{plugin_setting()}
 };
 my $paths;
@@ -67,8 +68,9 @@ hook on_reset_state => sub {
                 # Found a matching path
                 $path_settings = {
                     # Top-level settings
-                    save => $settings->{save},
+                    layout => $settings->{layout},
                     recursive => $settings->{recursive},
+                    save => $settings->{save},
                     # Path-specific settings (may override top-level ones)
                     %{$paths->{$path_prefix} || {}}
                 };
@@ -155,7 +157,8 @@ hook on_reset_state => sub {
         }
 
         # TODO: Add support for path-specific layouts
-        return (engine 'template')->apply_layout($content);
+        return (engine 'template')->apply_layout($content, {},
+            { layout => $path_settings->{layout} });
     };
 
     $handler_defined = 1;
@@ -188,6 +191,7 @@ Configure its settings in the YAML configuration file:
           "/articles":
             src_dir: "articles/markdown"
             dest_dir: "articles/html"
+            layout: "article"
 
 =head1 DESCRIPTION
 
@@ -204,6 +208,10 @@ saved and re-used with subsequent requests for the same URL.
 The available configuration settings are described below.
 
 =head2 Top-level settings
+
+=head3 layout
+
+The layout used to display the generated HTML content.
 
 =head3 paths
 

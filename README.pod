@@ -8,7 +8,7 @@ Dancer::Plugin::Preprocess::Markdown - Generate HTML content from Markdown files
 
 =head1 VERSION
 
-version 0.010
+version 0.020
 
 =head1 SYNOPSIS
 
@@ -31,6 +31,7 @@ Configure its settings in the YAML configuration file:
           "/articles":
             src_dir: "articles/markdown"
             dest_dir: "articles/html"
+            layout: "article"
 
 =head1 DESCRIPTION
 
@@ -47,6 +48,10 @@ saved and re-used with subsequent requests for the same URL.
 The available configuration settings are described below.
 
 =head2 Top-level settings
+
+=head3 layout
+
+The layout used to display the generated HTML content.
 
 =head3 paths
 

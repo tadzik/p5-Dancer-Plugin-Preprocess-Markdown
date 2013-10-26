@@ -1,6 +1,8 @@
 Revision history for Dancer-Plugin-Preprocess-Markdown
 
 {{$NEXT}}
+
+0.020     2013-10-26
           * Repaired request path matching
           * Added support for setting layouts
 

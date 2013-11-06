@@ -4,6 +4,8 @@ use Dancer;
 use Dancer::Test;
 use Test::More import => ['!pass'];
 
+plan tests => 4;
+
 set appdir => path(dirname(__FILE__), 'app');
 set views => path(dirname(__FILE__), 'app', 'views');
 set layout => 'main';

@@ -27,9 +27,10 @@ if (exists $settings->{paths}) {
 }
 
 my $paths_re = join '|', map {
-    s{^[^/]}{/$0};      # Add leading slash, if missing
-    s{/$}{};            # Remove trailing slash
-    quotemeta;
+    my $s = $_;
+    $s =~ s{^[^/]}{/$&};    # Add leading slash, if missing
+    $s =~ s{/$}{};          # Remove trailing slash
+    quotemeta $s;
 } reverse sort keys %$paths;
 
 sub _process_markdown_file {

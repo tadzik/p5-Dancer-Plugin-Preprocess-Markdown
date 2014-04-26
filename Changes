@@ -1,6 +1,7 @@
 Revision history for Dancer-Plugin-Preprocess-Markdown
 
 {{$NEXT}}
+          Added error handling for HTML file opening.
 
 0.020     2013-10-26
           * Repaired request path matching

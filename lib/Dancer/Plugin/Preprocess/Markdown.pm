@@ -135,24 +135,31 @@ hook on_reset_state => sub {
                 # not exist)
                 $content = _process_markdown_file($src_file);
 
-                open(my $f, '>', $dest_file);
-                # TODO: Error handling
-                print {$f} $content;
-                close($f);
+                if (open(my $f, '>', $dest_file)) {
+                    print {$f} $content;
+                    close($f);
+                }
+                else {
+                    warning __PACKAGE__ .
+                        ": Can't open '$dest_file' for writing";
+                }
             }
             else {
                 # The HTML file already exists -- read its contents back to the
                 # client
-                open (my $f, '<', $dest_file);
-                # TODO: Error handling
-                {
+                if (open (my $f, '<', $dest_file)) {
                     local $/;
                     $content = <$f>;
+                    close($f);
                 }
-                close($f);
+                else {
+                    warning __PACKAGE__ .
+                        ": Can't open '$dest_file' for reading";
+                }
             }
         }
-        else {
+
+        if (!defined $content) {
             $content = _process_markdown_file($src_file); 
         }
 

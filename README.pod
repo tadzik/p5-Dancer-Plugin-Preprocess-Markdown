@@ -1,6 +1,6 @@
 =pod
 
-=encoding utf-8
+=encoding UTF-8
 
 =head1 NAME
 
@@ -8,7 +8,7 @@ Dancer::Plugin::Preprocess::Markdown - Generate HTML content from Markdown files
 
 =head1 VERSION
 
-version 0.020
+version 0.021
 
 =head1 SYNOPSIS
 

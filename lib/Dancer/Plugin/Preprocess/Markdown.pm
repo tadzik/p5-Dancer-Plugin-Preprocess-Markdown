@@ -225,6 +225,12 @@ The available configuration settings are described below.
 
 The layout used to display the generated HTML content.
 
+=head3 markdown_options
+
+The options to be passed to the markdown processing subroutine of
+L<Text::Markdown> (see Text::Markdown documentation for the list of available
+options).
+
 =head3 paths
 
 A collection of paths that will be served by the plugin. Each path entry may

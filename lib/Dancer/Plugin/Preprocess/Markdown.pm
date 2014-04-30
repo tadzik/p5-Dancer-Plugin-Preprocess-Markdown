@@ -15,6 +15,7 @@ use Text::Markdown qw(markdown);
 
 my $settings = {
     layout => setting('layout'),
+    markdown_options => {},
     # TODO: It might make more sense to have 1 as the default
     recursive => 0,
     save => 0,
@@ -34,7 +35,7 @@ my $paths_re = join '|', map {
 } reverse sort keys %$paths;
 
 sub _process_markdown_file {
-    my $md_file = shift;
+    my ($md_file, $md_options) = @_;
 
     open (my $f, '<', $md_file);
     my $contents;
@@ -44,7 +45,7 @@ sub _process_markdown_file {
     }
     close($f);
 
-    return markdown($contents);
+    return markdown($contents, $md_options);
 }
 
 my $handler_defined;
@@ -70,6 +71,7 @@ hook on_reset_state => sub {
                 $path_settings = {
                     # Top-level settings
                     layout => $settings->{layout},
+                    markdown_options => $settings->{markdown_options},
                     recursive => $settings->{recursive},
                     save => $settings->{save},
                     # Path-specific settings (may override top-level ones)
@@ -134,7 +136,8 @@ hook on_reset_state => sub {
             {
                 # Source file is newer than destination file (or the latter does
                 # not exist)
-                $content = _process_markdown_file($src_file);
+                $content = _process_markdown_file($src_file,
+                    $path_settings->{markdown_options});
 
                 if (open(my $f, '>', $dest_file)) {
                     print {$f} $content;
@@ -161,7 +164,8 @@ hook on_reset_state => sub {
         }
 
         if (!defined $content) {
-            $content = _process_markdown_file($src_file); 
+            $content = _process_markdown_file($src_file,
+                $path_settings->{markdown_options}); 
         }
 
         # TODO: Add support for path-specific layouts

@@ -1,5 +1,5 @@
-package Dancer::Plugin::Preprocess::Markdown;
-
+package Dancer2::Plugin::Preprocess::Markdown;
+use Dancer2::Plugin;
 use strict;
 use warnings;
 
@@ -8,31 +8,31 @@ use warnings;
 # VERSION
 
 use Cwd 'abs_path';
-use Dancer ':syntax';
-use Dancer::Plugin;
 use File::Spec::Functions qw(catfile file_name_is_absolute);
 use Text::Markdown qw(markdown);
+use Path::Tiny;
 
-my $settings = {
-    layout => setting('layout'),
-    markdown_options => {},
-    # TODO: It might make more sense to have 1 as the default
-    recursive => 0,
-    save => 0,
-    %{plugin_setting()}
-};
-my $paths;
+has layout           => (is => 'ro', from_config => sub { undef });
+has markdown_options => (is => 'ro', from_config => sub {  {}   });
+has recursive        => (is => 'ro', from_config => sub {   0   });
+has save             => (is => 'ro', from_config => sub {   0   });
+has paths            => (is => 'ro', from_config => sub { undef });
+has paths_re         => (is => 'ro');
 
-if (exists $settings->{paths}) {
-    $paths = $settings->{paths};
+sub BUILD {
+    my $self = shift;
+    $self->{paths_re} = join '|', map {
+        my $s = $_;
+        $s =~ s{^[^/]}{/$&};    # Add leading slash, if missing
+        $s =~ s{/$}{};          # Remove trailing slash
+        quotemeta $s;
+    } reverse sort keys %{$self->paths};
+
+    $self->app->add_hook(Dancer2::Core::Hook->new(
+        name => 'before',
+        code => sub { $self->markdown_hook(shift) },
+    ));
 }
-
-my $paths_re = join '|', map {
-    my $s = $_;
-    $s =~ s{^[^/]}{/$&};    # Add leading slash, if missing
-    $s =~ s{/$}{};          # Remove trailing slash
-    quotemeta $s;
-} reverse sort keys %$paths;
 
 sub _process_markdown_file {
     my ($md_file, $md_options) = @_;
@@ -48,20 +48,19 @@ sub _process_markdown_file {
     return markdown($contents, $md_options);
 }
 
-my $handler_defined;
-
 # Postpone setting up the route handler to the time before the first request is
 # processed, so that other routes defined in the app will take precedence.
-hook on_reset_state => sub {
-    return if $handler_defined;
-
-    get qr{($paths_re)/(.*)} => sub {
-        my ($path, $file) = splat;
+sub markdown_hook {
+    my ($self, $app) = @_;
+    my $re = qr{($self->{paths_re})/(.*)};
+    $app->add_route(method => 'get', regexp => $re, code => sub {
+        my $app = shift;
+        my ($path, $file) = $app->request->splat;
 
         $path .= '/';
         my $path_settings;
 
-        for my $path_prefix (reverse sort keys %$paths) {
+        for my $path_prefix (reverse sort keys %{$self->paths}) {
             (my $path_prefix_slash = $path_prefix) =~ s{([^/])$}{$1/};
 
             if (substr($path, 0, length($path_prefix_slash)) eq
@@ -70,27 +69,27 @@ hook on_reset_state => sub {
                 # Found a matching path
                 $path_settings = {
                     # Top-level settings
-                    layout => $settings->{layout},
-                    markdown_options => $settings->{markdown_options},
-                    recursive => $settings->{recursive},
-                    save => $settings->{save},
+                    layout           => $self->layout,
+                    markdown_options => $self->markdown_options,
+                    recursive        => $self->recursive,
+                    save             => $self->save,
                     # Path-specific settings (may override top-level ones)
-                    %{$paths->{$path_prefix} || {}}
+                    %{$self->paths->{$path_prefix} || {}}
                 };
                 last;
             }
         }
 
         # Pass if there was no matching path
-        return pass if (!defined $path_settings);
+        return $app->pass if (!defined $path_settings);
 
         # Pass if the requested file appears to be in a subdirectory while
         # recursive mode is off
-        return pass if (!$path_settings->{recursive} && $file =~ m{/});
+        return $app->pass if (!$path_settings->{recursive} && $file =~ m{/});
 
         if (!exists $path_settings->{src_dir}) {
             # Source directory not specified -- use default
-            $path_settings->{src_dir} = path 'md', 'src', split(m{/}, $path);
+            $path_settings->{src_dir} = path 'md', 'src', grep { $_ } split(m{/}, $path);
         }
 
         # Strip off the ".html" suffix, if present
@@ -103,7 +102,7 @@ hook on_reset_state => sub {
         }
         else {
             # Assume a non-absolute source directory is relative to appdir
-            $src_file = path abs_path(setting('appdir')),
+            $src_file = path abs_path($app->setting('appdir')),
                 $path_settings->{src_dir}, ($file . '.md');
         }
 
@@ -144,8 +143,8 @@ hook on_reset_state => sub {
                     close($f);
                 }
                 else {
-                    warning __PACKAGE__ .
-                        ": Can't open '$dest_file' for writing";
+                    $app->log->(warning => __PACKAGE__ .
+                        ": Can't open '$dest_file' for writing");
                 }
             }
             else {
@@ -157,8 +156,8 @@ hook on_reset_state => sub {
                     close($f);
                 }
                 else {
-                    warning __PACKAGE__ .
-                        ": Can't open '$dest_file' for reading";
+                    $app->log->(warning => __PACKAGE__ .
+                        ": Can't open '$dest_file' for reading");
                 }
             }
         }
@@ -169,14 +168,10 @@ hook on_reset_state => sub {
         }
 
         # TODO: Add support for path-specific layouts
-        return (engine 'template')->apply_layout($content, {},
+        return $app->engine('template')->apply_layout($content, {},
             { layout => $path_settings->{layout} });
-    };
-
-    $handler_defined = 1;
+    });
 };
-
-register_plugin;
 
 1;
 
@@ -184,7 +179,7 @@ __END__
 
 =head1 SYNOPSIS
 
-Dancer::Plugin::Preprocess::Markdown automatically generates HTML content from
+Dancer2::Plugin::Preprocess::Markdown automatically generates HTML content from
 Markdown files in a Dancer web application.
 
 Add the plugin to your application:
@@ -207,7 +202,7 @@ Configure its settings in the YAML configuration file:
 
 =head1 DESCRIPTION
 
-Dancer::Plugin::Preprocess::Markdown generates HTML content from Markdown source
+Dancer2::Plugin::Preprocess::Markdown generates HTML content from Markdown source
 files.
 
 When an HTML file is requested, and its path matches one of the paths specified

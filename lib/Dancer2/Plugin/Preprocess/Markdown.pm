@@ -1,4 +1,20 @@
 package Dancer2::Plugin::Preprocess::Markdown;
+use 5.012;
+use Data::Dumper;
+
+package Catch404 {
+    use Moo::Role;
+    has 'preprocess_markdown_plugin_obj'  => (is => 'rw');
+
+    around response_not_found => sub {
+        my $orig = shift;
+        my ($app, $request) = @_;
+        my $plugin = $app->preprocess_markdown_plugin_obj;
+        my $res = $plugin->markdown_hook($app, $request);
+        return $res // $orig->(@_);
+    }
+};
+
 use Dancer2::Plugin;
 use strict;
 use warnings;
@@ -26,11 +42,8 @@ sub BUILD {
         $s =~ s{/$}{};          # Remove trailing slash
         quotemeta $s;
     } reverse sort keys %{$self->paths};
-
-    $self->app->add_hook(Dancer2::Core::Hook->new(
-        name => 'before',
-        code => sub { $self->markdown_hook(shift) },
-    ));
+    Role::Tiny->apply_roles_to_object($self->app, 'Catch404');
+    $self->app->preprocess_markdown_plugin_obj($self);
 }
 
 sub _process_markdown_file {
@@ -47,129 +60,126 @@ sub _process_markdown_file {
     return markdown($contents, $md_options);
 }
 
-# Postpone setting up the route handler to the time before the first request is
-# processed, so that other routes defined in the app will take precedence.
 sub markdown_hook {
-    my ($self, $app) = @_;
-    my $re = qr{($self->{paths_re})/(.*)};
-    $app->add_route(method => 'get', regexp => $re, code => sub {
-        my $app = shift;
-        my ($path, $file) = $app->request->splat;
+    my ($self, $app, $request) = @_;
+    my ($path, $file) = $request->path =~ qr{($self->{paths_re})/(.*)};
+    return unless $path and $file;
+    $path .= '/';
+    my $path_settings;
 
-        $path .= '/';
-        my $path_settings;
+    for my $path_prefix (reverse sort keys %{$self->paths}) {
+        (my $path_prefix_slash = $path_prefix) =~ s{([^/])$}{$1/};
 
-        for my $path_prefix (reverse sort keys %{$self->paths}) {
-            (my $path_prefix_slash = $path_prefix) =~ s{([^/])$}{$1/};
+        if (substr($path, 0, length($path_prefix_slash)) eq
+            $path_prefix_slash)
+        {
+            # Found a matching path
+            $path_settings = {
+                # Top-level settings
+                layout           => $self->layout,
+                markdown_options => $self->markdown_options,
+                recursive        => $self->recursive,
+                save             => $self->save,
+                # Path-specific settings (may override top-level ones)
+                %{$self->paths->{$path_prefix} || {}}
+            };
+            last;
+        }
+    }
 
-            if (substr($path, 0, length($path_prefix_slash)) eq
-                $path_prefix_slash)
-            {
-                # Found a matching path
-                $path_settings = {
-                    # Top-level settings
-                    layout           => $self->layout,
-                    markdown_options => $self->markdown_options,
-                    recursive        => $self->recursive,
-                    save             => $self->save,
-                    # Path-specific settings (may override top-level ones)
-                    %{$self->paths->{$path_prefix} || {}}
-                };
-                last;
-            }
+    # Pass if there was no matching path
+    return if (!defined $path_settings);
+
+    # Pass if the requested file appears to be in a subdirectory while
+    # recursive mode is off
+    return if (!$path_settings->{recursive} && $file =~ m{/});
+
+    if (!exists $path_settings->{src_dir}) {
+        # Source directory not specified -- use default
+        $path_settings->{src_dir} = catfile 'md', 'src', split(m{/}, $path);
+    }
+
+    # Strip off the ".html" suffix, if present
+    $file =~ s/\.html$//;
+
+    my $src_file;
+
+    if (file_name_is_absolute($path_settings->{src_dir})) {
+        $src_file = catfile $path_settings->{src_dir}, ($file . '.md');
+    }
+    else {
+        # Assume a non-absolute source directory is relative to appdir
+        $src_file = catfile abs_path($app->setting('appdir')),
+            $path_settings->{src_dir}, ($file . '.md');
+    }
+
+    if (!-r $src_file) {
+        return Dancer2::Core::Response->new(code => 403, content => "Not allowed");
+    }
+
+    my $content;
+
+    if ($path_settings->{save}) {
+        if (!exists $path_settings->{dest_dir}) {
+            $path_settings->{dest_dir} = catfile 'md', 'dest',
+                split(m{/}, $path);
         }
 
-        # Pass if there was no matching path
-        return $app->pass if (!defined $path_settings);
+        my $dest_file;
 
-        # Pass if the requested file appears to be in a subdirectory while
-        # recursive mode is off
-        return $app->pass if (!$path_settings->{recursive} && $file =~ m{/});
-
-        if (!exists $path_settings->{src_dir}) {
-            # Source directory not specified -- use default
-            $path_settings->{src_dir} = catfile 'md', 'src', split(m{/}, $path);
-        }
-
-        # Strip off the ".html" suffix, if present
-        $file =~ s/\.html$//;
-
-        my $src_file;
-
-        if (file_name_is_absolute($path_settings->{src_dir})) {
-            $src_file = catfile $path_settings->{src_dir}, ($file . '.md');
+        if (file_name_is_absolute($path_settings->{dest_dir})) {
+            $dest_file = catfile $path_settings->{dest_dir}, ($file . '.html');
         }
         else {
-            # Assume a non-absolute source directory is relative to appdir
-            $src_file = catfile abs_path($app->setting('appdir')),
-                $path_settings->{src_dir}, ($file . '.md');
+            # Assume a non-absolute destination directory is relative to
+            # appdir
+            $dest_file = catfile abs_path(setting('appdir')),
+                $path_settings->{dest_dir}, ($file . '.html');
         }
 
-        if (!-r $src_file) {
-            return send_error("Not allowed", 403);
-        }
-
-        my $content;
-
-        if ($path_settings->{save}) {
-            if (!exists $path_settings->{dest_dir}) {
-                $path_settings->{dest_dir} = catfile 'md', 'dest',
-                    split(m{/}, $path);
-            }
-
-            my $dest_file;
-
-            if (file_name_is_absolute($path_settings->{dest_dir})) {
-                $dest_file = catfile $path_settings->{dest_dir}, ($file . '.html');
-            }
-            else {
-                # Assume a non-absolute destination directory is relative to
-                # appdir
-                $dest_file = catfile abs_path(setting('appdir')),
-                    $path_settings->{dest_dir}, ($file . '.html');
-            }
-
-            if (!-f $dest_file ||
-                ((stat($dest_file))[9] < (stat($src_file))[9]))
-            {
-                # Source file is newer than destination file (or the latter does
-                # not exist)
-                $content = _process_markdown_file($src_file,
-                    $path_settings->{markdown_options});
-
-                if (open(my $f, '>', $dest_file)) {
-                    print {$f} $content;
-                    close($f);
-                }
-                else {
-                    $app->log->(warning => __PACKAGE__ .
-                        ": Can't open '$dest_file' for writing");
-                }
-            }
-            else {
-                # The HTML file already exists -- read its contents back to the
-                # client
-                if (open (my $f, '<', $dest_file)) {
-                    local $/;
-                    $content = <$f>;
-                    close($f);
-                }
-                else {
-                    $app->log->(warning => __PACKAGE__ .
-                        ": Can't open '$dest_file' for reading");
-                }
-            }
-        }
-
-        if (!defined $content) {
+        if (!-f $dest_file ||
+            ((stat($dest_file))[9] < (stat($src_file))[9]))
+        {
+            # Source file is newer than destination file (or the latter does
+            # not exist)
             $content = _process_markdown_file($src_file,
-                $path_settings->{markdown_options}); 
-        }
+                $path_settings->{markdown_options});
 
-        # TODO: Add support for path-specific layouts
-        return $app->engine('template')->apply_layout($content, {},
-            { layout => $path_settings->{layout} });
-    });
+            if (open(my $f, '>', $dest_file)) {
+                print {$f} $content;
+                close($f);
+            }
+            else {
+                $app->log->(warning => __PACKAGE__ .
+                    ": Can't open '$dest_file' for writing");
+            }
+        }
+        else {
+            # The HTML file already exists -- read its contents back to the
+            # client
+            if (open (my $f, '<', $dest_file)) {
+                local $/;
+                $content = <$f>;
+                close($f);
+            }
+            else {
+                $app->log->(warning => __PACKAGE__ .
+                    ": Can't open '$dest_file' for reading");
+            }
+        }
+    }
+
+    if (!defined $content) {
+        $content = _process_markdown_file($src_file,
+            $path_settings->{markdown_options}); 
+    }
+
+    # TODO: Add support for path-specific layouts
+    return Dancer2::Core::Response->new(
+        status  => 200,
+        content => $app->engine('template')->apply_layout($content, {},
+                    { layout => $path_settings->{layout} })
+    );
 };
 
 1;

@@ -1,4 +1,5 @@
 layout: 'main'
+template: 'simple'
 plugins:
     'Preprocess::Markdown':
         paths:

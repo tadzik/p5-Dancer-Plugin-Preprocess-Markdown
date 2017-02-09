@@ -1,0 +1,14 @@
+layout: 'main'
+plugins:
+    'Preprocess::Markdown':
+        paths:
+            '/': undef
+            '/1': 
+                src_dir: 'md/src'
+                layout: 'layout1'
+            '/2':
+                src_dir: 'md/src'
+                layout: 'layout2'
+            '/3':
+                src_dir: 'md/src'
+                layout: undef

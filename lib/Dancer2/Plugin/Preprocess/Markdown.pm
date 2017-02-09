@@ -115,6 +115,8 @@ sub markdown_hook {
     }
 
     if (!-r $src_file) {
+        $app->log(warning => __PACKAGE__ . ": " .
+                    "'$src_file' was matched by the plugin but is not readable");
         return Dancer2::Core::Response->new(code => 403, content => "Not allowed");
     }
 
@@ -151,7 +153,7 @@ sub markdown_hook {
                 close($f);
             }
             else {
-                $app->log->(warning => __PACKAGE__ .
+                $app->log(warning => __PACKAGE__ .
                     ": Can't open '$dest_file' for writing");
             }
         }
@@ -164,7 +166,7 @@ sub markdown_hook {
                 close($f);
             }
             else {
-                $app->log->(warning => __PACKAGE__ .
+                $app->log(warning => __PACKAGE__ .
                     ": Can't open '$dest_file' for reading");
             }
         }

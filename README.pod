@@ -4,15 +4,15 @@
 
 =head1 NAME
 
-Dancer::Plugin::Preprocess::Markdown - Generate HTML content from Markdown files
+Dancer2::Plugin::Preprocess::Markdown - Generate HTML content from Markdown files
 
 =head1 VERSION
 
-version 0.021
+version 0.022
 
 =head1 SYNOPSIS
 
-Dancer::Plugin::Preprocess::Markdown automatically generates HTML content from
+Dancer2::Plugin::Preprocess::Markdown automatically generates HTML content from
 Markdown files in a Dancer web application.
 
 Add the plugin to your application:
@@ -35,7 +35,7 @@ Configure its settings in the YAML configuration file:
 
 =head1 DESCRIPTION
 
-Dancer::Plugin::Preprocess::Markdown generates HTML content from Markdown source
+Dancer2::Plugin::Preprocess::Markdown generates HTML content from Markdown source
 files.
 
 When an HTML file is requested, and its path matches one of the paths specified
@@ -52,6 +52,12 @@ The available configuration settings are described below.
 =head3 layout
 
 The layout used to display the generated HTML content.
+
+=head3 markdown_options
+
+The options to be passed to the markdown processing subroutine of
+L<Text::Markdown> (see Text::Markdown documentation for the list of available
+options).
 
 =head3 paths
 
@@ -137,7 +143,7 @@ Doran.
 =head2 Bugs / Feature Requests
 
 Please report any bugs or feature requests through the issue tracker
-at L<https://github.com/odyniec/p5-Dancer-Plugin-Preprocess-Markdown/issues>.
+at L<https://github.com/tadzik/p5-Dancer-Plugin-Preprocess-Markdown/issues>.
 You will be notified automatically of any progress on your issue.
 
 =head2 Source Code
@@ -145,13 +151,29 @@ You will be notified automatically of any progress on your issue.
 This is open source software.  The code repository is available for
 public review and contribution under the terms of the license.
 
-L<https://github.com/odyniec/p5-Dancer-Plugin-Preprocess-Markdown>
+L<https://github.com/tadzik/p5-Dancer-Plugin-Preprocess-Markdown>
 
-  git clone https://github.com/odyniec/p5-Dancer-Plugin-Preprocess-Markdown.git
+  git clone https://github.com/tadzik/p5-Dancer-Plugin-Preprocess-Markdown.git
 
 =head1 AUTHOR
 
 Michal Wojciechowski <odyniec@cpan.org>
+
+=head1 CONTRIBUTORS
+
+=for stopwords Michal Wojciechowski Tadeusz “tadzik” Sośnierz
+
+=over 4
+
+=item *
+
+Michal Wojciechowski <odyniec@odyniec.net>
+
+=item *
+
+Tadeusz “tadzik” Sośnierz <tadeusz.sosnierz@onet.pl>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -160,3 +182,4 @@ This software is copyright (c) 2013 by Michal Wojciechowski.
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
+=cut

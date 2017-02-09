@@ -44,6 +44,7 @@ sub BUILD {
     } reverse sort keys %{$self->paths};
     Role::Tiny->apply_roles_to_object($self->app, 'Catch404');
     $self->app->preprocess_markdown_plugin_obj($self);
+    $self->{layout} //= $self->app->settings->{layout};
 }
 
 sub _process_markdown_file {
@@ -63,7 +64,7 @@ sub _process_markdown_file {
 sub markdown_hook {
     my ($self, $app, $request) = @_;
     my ($path, $file) = $request->path =~ qr{($self->{paths_re})/(.*)};
-    return unless $path and $file;
+    return unless $file;
     $path .= '/';
     my $path_settings;
 

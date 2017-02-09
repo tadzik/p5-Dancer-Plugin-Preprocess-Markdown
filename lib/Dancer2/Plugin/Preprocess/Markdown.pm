@@ -10,7 +10,6 @@ use warnings;
 use Cwd 'abs_path';
 use File::Spec::Functions qw(catfile file_name_is_absolute);
 use Text::Markdown qw(markdown);
-use Path::Tiny;
 
 has layout           => (is => 'ro', from_config => sub { undef });
 has markdown_options => (is => 'ro', from_config => sub {  {}   });
@@ -89,7 +88,7 @@ sub markdown_hook {
 
         if (!exists $path_settings->{src_dir}) {
             # Source directory not specified -- use default
-            $path_settings->{src_dir} = path 'md', 'src', grep { $_ } split(m{/}, $path);
+            $path_settings->{src_dir} = catfile 'md', 'src', split(m{/}, $path);
         }
 
         # Strip off the ".html" suffix, if present

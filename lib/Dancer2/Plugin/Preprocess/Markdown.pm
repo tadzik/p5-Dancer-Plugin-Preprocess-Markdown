@@ -97,11 +97,11 @@ sub markdown_hook {
         my $src_file;
 
         if (file_name_is_absolute($path_settings->{src_dir})) {
-            $src_file = path $path_settings->{src_dir}, ($file . '.md');
+            $src_file = catfile $path_settings->{src_dir}, ($file . '.md');
         }
         else {
             # Assume a non-absolute source directory is relative to appdir
-            $src_file = path abs_path($app->setting('appdir')),
+            $src_file = catfile abs_path($app->setting('appdir')),
                 $path_settings->{src_dir}, ($file . '.md');
         }
 
@@ -113,19 +113,19 @@ sub markdown_hook {
 
         if ($path_settings->{save}) {
             if (!exists $path_settings->{dest_dir}) {
-                $path_settings->{dest_dir} = path 'md', 'dest',
+                $path_settings->{dest_dir} = catfile 'md', 'dest',
                     split(m{/}, $path);
             }
 
             my $dest_file;
 
             if (file_name_is_absolute($path_settings->{dest_dir})) {
-                $dest_file = path $path_settings->{dest_dir}, ($file . '.html');
+                $dest_file = catfile $path_settings->{dest_dir}, ($file . '.html');
             }
             else {
                 # Assume a non-absolute destination directory is relative to
                 # appdir
-                $dest_file = path abs_path(setting('appdir')),
+                $dest_file = catfile abs_path(setting('appdir')),
                     $path_settings->{dest_dir}, ($file . '.html');
             }
 

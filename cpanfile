@@ -1,6 +1,5 @@
 requires "Cwd" => "0";
-requires "Dancer" => "0";
-requires "Dancer::Plugin" => "0";
+requires "Dancer2" => "0";
 requires "File::Spec::Functions" => "0";
 requires "Text::Markdown" => "0";
 requires "perl" => "5.006";
